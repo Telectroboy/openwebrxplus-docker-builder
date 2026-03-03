@@ -135,10 +135,18 @@ apt -y install --no-install-recommends \
   ${PACKAGES}
 
 pinfo "Add repos and update apt again..."
-wget -O - https://luarvique.github.io/ppa/openwebrx-plus.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/openwebrx-plus.gpg
-echo "deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/${VERSION_CODENAME} ./" > /etc/apt/sources.list.d/openwebrx-plus.list
-# wget -O - https://repo.openwebrx.de/debian/key.gpg.txt | gpg --dearmor -o /usr/share/keyrings/openwebrx.gpg
-# echo "deb [signed-by=/usr/share/keyrings/openwebrx.gpg] https://repo.openwebrx.de/debian/ experimental main" > /etc/apt/sources.list.d/openwebrx.list
+
+apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gpg
+rm -rf /var/lib/apt/lists/*
+
+curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
+  --connect-timeout 20 --max-time 300 \
+  -A "Mozilla/5.0" \
+  https://luarvique.github.io/ppa/openwebrx-plus.gpg \
+| gpg --dearmor -o /etc/apt/trusted.gpg.d/openwebrx-plus.gpg
+
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/${VERSION_CODENAME} ./" \
+  > /etc/apt/sources.list.d/openwebrx-plus.list
 
 # if we have a local deb repo in the cache folder
 if [ -d /build_cache/deb/ ]; then
@@ -155,7 +163,15 @@ if [ -d /build_cache/deb/ ]; then
   apt remove -y --purge --autoremove dpkg-dev apt-utils
 fi
 
-apt update
+# Retry apt update (CI/network can be flaky)
+for i in 1 2 3 4 5; do
+  apt update && break
+  sleep 5
+done
+
+# Fail fast if luarvique repo wasn't taken into account
+apt-cache show openwebrx >/dev/null 2>&1 || { echo "openwebrx not found in APT indexes"; exit 1; }
+
 apt upgrade -y
 
 
