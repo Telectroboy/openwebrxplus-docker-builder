@@ -1,0 +1,44 @@
+name: Build & Push OpenWebRX+ images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Image principale
+      - name: Build & push openwebrxplus
+        uses: docker/build-push-action@v6
+        with:
+          context: ./buildfiles
+          file: ./buildfiles/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/openwebrxplus:latest
+
+      # Variante softmbe
+      - name: Build & push openwebrxplus-softmbe
+        uses: docker/build-push-action@v6
+        with:
+          context: ./buildfiles
+          file: ./buildfiles/Dockerfile-softmbe
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/openwebrxplus-softmbe:latest
