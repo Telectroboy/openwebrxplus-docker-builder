@@ -201,15 +201,31 @@ c739ba0e6c7769957ca79ab05e46f081  SDRplay_RSP_API-Linux-3.14.0.run
 b7317257d7498c2fa22d6d53b90f4611  SDRplay_RSP_API-Linux-3.15.1.run
 92feae82c39d2e33eec13fc5662a3b9b  SDRplay_RSP_API-Linux-3.15.2.run
 '
+  #wget --no-http-keep-alive "https://www.sdrplay.com/software/$SDRPLAY_BINARY"
+
+fi
 mkdir -p sdrplay
 pushd sdrplay
+
 if [ -f "$SDRPLAY_BINARY" ] && echo "$MD5SUMS" | md5sum --ignore-missing -c; then
   pinfo "skipping download..."
 else
   pinfo "downloading $SDRPLAY_BINARY"
   rm -f "$SDRPLAY_BINARY"
-  wget --no-http-keep-alive "https://www.sdrplay.com/software/$SDRPLAY_BINARY"
+  
+  #wget --no-http-keep-alive "https://www.sdrplay.com/software/$SDRPLAY_BINARY"
+    
+  apt-get update && apt-get install -y --no-install-recommends ca-certificates curl
+  rm -rf /var/lib/apt/lists/*
+
+  URL="https://www.sdrplay.com/software/${SDRPLAY_BINARY}"
+
+  curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
+    --connect-timeout 20 --max-time 600 \
+    -A "Mozilla/5.0" \
+    -o "${SDRPLAY_BINARY}" "${URL}"
 fi
+
 sh "$SDRPLAY_BINARY" --noexec --target sdrplay
 patch --verbose -Np0 < "/sdrplay-patch/$SDRPLAY_BINARY.patch"
 cd sdrplay
