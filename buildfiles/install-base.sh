@@ -59,11 +59,16 @@ VERSION_CODENAME=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr 
 case "$VERSION_CODENAME" in
   bookworm|trixie)
     pinfo "Enabling Debian non-free repositories for $VERSION_CODENAME..."
-    cat > /etc/apt/sources.list.d/debian-nonfree.list << EOF
+    # If the base image already uses Deb822 sources (debian.sources), avoid duplicating entries.
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then
+      rm -f /etc/apt/sources.list.d/debian-nonfree.list || true
+    else
+      cat > /etc/apt/sources.list.d/debian-nonfree.list << EOF
 deb http://deb.debian.org/debian $VERSION_CODENAME main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security $VERSION_CODENAME-security main contrib non-free non-free-firmware
 EOF
+    fi
     ;;
   *) ;;
 esac
@@ -100,9 +105,10 @@ case "$VERSION_CODENAME" in
 esac
 
 pinfo "Update apt and install packages..."
-apt update
-apt -y install --no-install-recommends \
+apt-get update
+apt-get -y install --no-install-recommends \
   wget \
+  curl \
   gpg \
   ca-certificates \
   patch \
@@ -136,9 +142,6 @@ apt -y install --no-install-recommends \
 
 pinfo "Add repos and update apt again..."
 
-apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gpg
-rm -rf /var/lib/apt/lists/*
-
 curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
   --connect-timeout 20 --max-time 300 \
   -A "Mozilla/5.0" \
@@ -148,8 +151,21 @@ curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
 pinfo "VERSION_CODENAME=${VERSION_CODENAME}"
 cat /etc/os-release || true
 
-echo "deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/${VERSION_CODENAME} ./" \
+# Map distro codename to the PPA codename.
+# If the PPA doesn't provide your codename yet, fall back to bookworm.
+PPA_CODENAME="$VERSION_CODENAME"
+case "$PPA_CODENAME" in
+  bookworm) ;;
+  *)
+    pwarn "PPA codename '$PPA_CODENAME' may not exist; falling back to 'bookworm'."
+    PPA_CODENAME="bookworm"
+    ;;
+esac
+
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/${PPA_CODENAME} ./" \
   > /etc/apt/sources.list.d/openwebrx-plus.list
+# wget -O - https://repo.openwebrx.de/debian/key.gpg.txt | gpg --dearmor -o /usr/share/keyrings/openwebrx.gpg
+# echo "deb [signed-by=/usr/share/keyrings/openwebrx.gpg] https://repo.openwebrx.de/debian/ experimental main" > /etc/apt/sources.list.d/openwebrx.list
 
 # if we have a local deb repo in the cache folder
 if [ -d /build_cache/deb/ ]; then
@@ -168,14 +184,23 @@ fi
 
 # Retry apt update (CI/network can be flaky)
 for i in 1 2 3 4 5; do
-  apt update && break
+  apt-get update && break
   sleep 5
 done
 
-# Fail fast if luarvique repo wasn't taken into account
-apt-cache show openwebrx >/dev/null 2>&1 || { echo "openwebrx not found in APT indexes"; exit 1; }
+# Fail fast: ensure openwebrx is really available in APT (not "Candidate: (none)")
+if ! apt-cache policy openwebrx | awk '/Candidate:/ {print $2}' | grep -vqE '^\(none\)$'; then
+  echo "openwebrx not found in APT indexes (Candidate: (none))"
+  echo "---- /etc/apt/sources.list.d ----"
+  ls -l /etc/apt/sources.list.d || true
+  echo "---- openwebrx-plus.list ----"
+  cat /etc/apt/sources.list.d/openwebrx-plus.list || true
+  echo "---- apt-get update debug ----"
+  apt-get update -o Debug::Acquire::https=true || true
+  exit 1
+fi
 
-apt upgrade -y
+apt-get upgrade -y
 
 
 
