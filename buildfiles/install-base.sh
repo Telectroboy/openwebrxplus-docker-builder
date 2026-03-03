@@ -145,6 +145,9 @@ curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
   https://luarvique.github.io/ppa/openwebrx-plus.gpg \
 | gpg --dearmor -o /etc/apt/trusted.gpg.d/openwebrx-plus.gpg
 
+pinfo "VERSION_CODENAME=${VERSION_CODENAME}"
+cat /etc/os-release || true
+
 echo "deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/${VERSION_CODENAME} ./" \
   > /etc/apt/sources.list.d/openwebrx-plus.list
 
