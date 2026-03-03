@@ -203,7 +203,6 @@ b7317257d7498c2fa22d6d53b90f4611  SDRplay_RSP_API-Linux-3.15.1.run
 '
   #wget --no-http-keep-alive "https://www.sdrplay.com/software/$SDRPLAY_BINARY"
 
-fi
 mkdir -p sdrplay
 pushd sdrplay
 
