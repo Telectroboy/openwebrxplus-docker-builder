@@ -59,16 +59,20 @@ VERSION_CODENAME=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 | tr 
 case "$VERSION_CODENAME" in
   bookworm|trixie)
     pinfo "Enabling Debian non-free repositories for $VERSION_CODENAME..."
-    # If the base image already uses Deb822 sources (debian.sources), avoid duplicating entries.
-    if [ -f /etc/apt/sources.list.d/debian.sources ]; then
-      rm -f /etc/apt/sources.list.d/debian-nonfree.list || true
-    else
-      cat > /etc/apt/sources.list.d/debian-nonfree.list << EOF
+
+if [ -f /etc/apt/sources.list.d/debian.sources ]; then
+  # Debian 12+ uses Deb822 sources: ensure Components include non-free
+  perl -0777 -i -pe 's/^(Components:\s*.*)$/Components: main contrib non-free non-free-firmware/mg' \
+    /etc/apt/sources.list.d/debian.sources
+else
+  cat > /etc/apt/sources.list.d/debian-nonfree.list << EOF
 deb http://deb.debian.org/debian $VERSION_CODENAME main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security $VERSION_CODENAME-security main contrib non-free non-free-firmware
 EOF
-    fi
+fi
+
+apt-get update
     ;;
   *) ;;
 esac
