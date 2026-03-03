@@ -259,8 +259,6 @@ else
   #wget --no-http-keep-alive "https://www.sdrplay.com/software/$SDRPLAY_BINARY"
     
   apt-get update && apt-get install -y --no-install-recommends ca-certificates curl
-  rm -rf /var/lib/apt/lists/*
-
   URL="https://www.sdrplay.com/software/${SDRPLAY_BINARY}"
 
   curl -fL --retry 8 --retry-delay 5 --retry-all-errors \
