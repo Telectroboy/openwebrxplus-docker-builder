@@ -1,3 +1,10 @@
+# Modified by Telectroboy to automatically push to my Docker Hub :
+Check the [Docker Hub](https://hub.docker.com/r/telectroboy2/openwebrxplus) page for the official image.  
+Check the [Docker Hub](https://hub.docker.com/r/telectroboy2/openwebrxplus-softmbe) page for the softmbe image.
+
+
+
+
 # openwebrxplus-docker-builder
 OpenWebRX+ docker images builder.  
 Use this repo to build the official docker image and the SoftMBE image.  
